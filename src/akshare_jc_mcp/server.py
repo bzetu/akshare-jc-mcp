@@ -3,6 +3,7 @@ import traceback
 from datetime import datetime
 from typing import Annotated, Literal
 
+import pandas as pd
 import akshare as ak
 import akshare_one as ako
 from akshare_one import indicators
@@ -85,11 +86,16 @@ def _call_feature(feature: str, symbol: str, kwargs: dict) -> dict:
             return {"feature": feature, "data": df.to_json(orient="records"), "error": False, "error_reason": None}
 
         elif feature == "hist_data":
-            df = ako.get_hist_data(
-                symbol=symbol,
-                interval=kwargs.get("hist_interval", "day"),
-                source="sina",
+            interval = kwargs.get("hist_interval", "day")
+            exchange = "sz" if symbol[0] in "023" else "bj" if symbol[0] in "48" else "sh"
+            df = ak.stock_zh_a_daily(
+                symbol=f"{exchange}{symbol}",
+                adjust="qfq",
             )
+            df = df.rename(columns={"date": "timestamp"})
+            df["timestamp"] = pd.to_datetime(df["timestamp"]).dt.tz_localize("Asia/Shanghai")
+            df["volume"] = df["volume"].astype("int64")
+            df = df[["timestamp", "open", "high", "low", "close", "volume"]]
             indicators_list = kwargs.get("hist_indicators") or []
             if indicators_list:
                 temp = []
