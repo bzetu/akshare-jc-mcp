@@ -1,7 +1,0 @@
-Metadata-Version: 2.4
-Name: akshare-jc-mcp
-Version: 0.1.0
-Summary: Unified MCP server for Chinese stock market data, replacing akshare-one-mcp
-Requires-Python: >=3.11
-Requires-Dist: fastmcp>=1.0.0
-Requires-Dist: akshare-one>=0.3.9

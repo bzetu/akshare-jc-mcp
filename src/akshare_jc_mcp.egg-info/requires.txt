@@ -1,2 +1,0 @@
-fastmcp>=1.0.0
-akshare-one>=0.3.9
