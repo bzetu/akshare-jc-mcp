@@ -1,0 +1,10 @@
+README.md
+pyproject.toml
+src/akshare_jc_mcp/__init__.py
+src/akshare_jc_mcp/__main__.py
+src/akshare_jc_mcp/server.py
+src/akshare_jc_mcp.egg-info/PKG-INFO
+src/akshare_jc_mcp.egg-info/SOURCES.txt
+src/akshare_jc_mcp.egg-info/dependency_links.txt
+src/akshare_jc_mcp.egg-info/requires.txt
+src/akshare_jc_mcp.egg-info/top_level.txt
