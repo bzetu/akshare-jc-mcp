@@ -37,8 +37,6 @@ Requires Python 3.10+ and a working `akshare` installation (auto-installed as de
 
 ## Tool: `get_data`
 
-The single endpoint for all data needs.
-
 ### Parameters
 
 | Parameter | Type | Required | Default | Description |
@@ -46,83 +44,69 @@ The single endpoint for all data needs.
 | `symbol` | `string` | Yes | — | Stock code (e.g. `000625`, `600519`) |
 | `features` | `array[string]` | Yes | — | List of data features to fetch |
 
-### Feature list
+### Features
 
-| Feature | Description |
-|---------|-------------|
-| `news` | Recent news related to the stock |
-| `inner_trade` | Insider trading / block trade records |
-| `financial` | Key financial metrics (PE, PB, ROE, revenue, profit) |
-| `balance_sheet` | Balance sheet (total assets, liabilities, equity) |
-| `income_statement` | Income statement (revenue, cost, profit breakdown) |
-| `cash_flow` | Cash flow statement (operating/investing/financing) |
-| `hist_data` | Daily K-line with optional technical indicators |
-| `realtime` | Real-time snap quote |
-| `time_info` | Current system time + last trading day |
+| Feature | Description | Data Source |
+|---------|-------------|-------------|
+| `news` | Recent news with full article text (no URLs) | East Money |
+| `inner_trade` | Insider trading / block trade records | 雪球 |
+| `financial` | Key financial metrics by reporting period | 同花顺 |
+| `fund_flow` | Daily fund flow (main force / super-large / large / medium / small orders) | East Money push API |
+| `concept` | Concept board tags belonging to the stock | East Money push2delay |
+| `hsgt_summary` | North-bound / South-bound capital flow summary | East Money |
+| `hist_data` | Daily K-line with optional technical indicators | akshare (腾讯) |
+| `realtime` | Real-time snap quote | 腾讯 |
+| `time_info` | Current system time + last trading day | Sina + local |
 
-### Example Usage (in SOUL.md)
+### Typical Usage
 
-**Sentinel — data gathering:**
+**消息面+基本面查询（一次性获取全部）：**
 
 ```markdown
-Ask akshare-jc-mcp for news, insider trading, and financial data all at once:
-
-    get_data(symbol="000625", features=["news", "inner_trade", "financial"])
-
-If a feature returns error: true, fall back to web_search for that aspect.
+    get_data(symbol="600733", features=["news", "inner_trade", "financial", "fund_flow", "concept", "hsgt_summary"], news_recent_n=10, recent_n=3)
 ```
 
-**Prism — technical analysis:**
+**技术分析：**
 
 ```markdown
-Ask akshare-jc-mcp for historical data with indicators:
-
-    get_data(symbol="000625", features=["hist_data"])
-
-All indicators (KDJ, MACD, RSI, BOLL, SMA) are computed automatically.
+    get_data(symbol="600733", features=["hist_data"], hist_indicators=["KDJ","MACD","RSI","BOLL","SMA"])
 ```
 
 ### Response Format
 
-The tool returns a JSON array of objects, one per feature:
+JSON array, one entry per feature:
 
 ```json
 [
-  {
-    "feature": "news",
-    "data": [
-      {"title": "...", "date": "2026-07-07", "content": "..."},
-      ...
-    ],
-    "error": false,
-    "error_reason": null
-  },
-  {
-    "feature": "inner_trade",
-    "data": [...],
-    "error": false,
-    "error_reason": null
-  },
-  {
-    "feature": "financial",
-    "data": null,
-    "error": true,
-    "error_reason": "API request failed: connection timeout"
-  }
+  {"feature": "news", "data": [...], "error": false, "error_reason": null},
+  {"feature": "fund_flow", "data": [...], "error": false, "error_reason": null},
+  ...
 ]
 ```
 
-**Important**: When a feature has `error: true`, the LLM should handle it gracefully (e.g. fall back to web search or inform the user).
+`error: true` means the feature failed — LLM should fall back to web search or inform the user.
+
+## Design & Reliability
+
+### Problems Solved
+
+| Problem | Solution |
+|---------|----------|
+| LLM makes 4-7 tool calls per request (news + insider_trade + financial + balance_sheet + ...) | Single `get_data` call accepts all features at once via concurrent.futures |
+| akshare `stock_board_concept_cons_em(symbol)` takes **stock code** but expects a **board name** → returns empty | Rewrote with direct `push2delay` API: `f129` field returns comma-separated concept names in one call |
+| akshare concurrent calls trigger eastmoney `RemoteDisconnected` (connection pool exhaustion) | Shared `requests.Session` with connection reuse; `fund_flow` uses `push2delay` as fallback when `push2his` drops |
+| akshare `stock_news_em()` returns truncated snippets | `_fetch_article_text` fetches full HTML and extracts article body per feature section |
+| Sina financial statements (balance_sheet / income_statement / cash_flow) were too large (~18-26KB each) and semantically duplicate with `financial` | Removed; `recent_n=3` reports-only mode keeps payload under 2KB |
+| LLM was seeing news URLs and trying to fetch them manually | `r.pop("新闻链接", None)` before returning |
+
+### Reliability
+
+All HTTP calls share a single `requests.Session` to minimize connection overhead. Features that depend on eastmoney APIs fall back to alternative endpoints (`push2delay` when `push2/push2his` are unavailable). Total 6-feature fetch (`news`+`inner_trade`+`financial`+`fund_flow`+`concept`+`hsgt_summary`) completes in **2-3s** (~15KB).
 
 ## Development
 
 ```bash
-# Clone and install
-git clone https://github.com/bzetu/akshare-jc-mcp
-cd akshare-jc-mcp
 pip install -e .
-
-# Test
 python -c "from akshare_jc_mcp.server import mcp; print(mcp.name)"
 ```
 
