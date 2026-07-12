@@ -20,7 +20,7 @@ pip install -e .
 
 ## MCP Configuration
 
-Add to your Hermes / Claude Desktop MCP config:
+Add to your MCP client config (Claude Desktop, Cursor, etc.):
 
 ```json
 {
