@@ -43,6 +43,13 @@ Requires Python 3.10+ and a working `akshare` installation (auto-installed as de
 |-----------|------|----------|---------|-------------|
 | `symbol` | `string` | Yes | — | Stock code (e.g. `000625`, `600519`) |
 | `features` | `array[string]` | Yes | — | List of data features to fetch |
+| `news_recent_n` | `int` | No | 10 | Number of recent news records |
+| `recent_n` | `int` | No | 3 | Number of recent financial statement periods |
+| `hist_interval` | `string` | No | `"day"` | K-line interval: `1min`, `day`, `week`, `month`, `year` |
+| `hist_indicators` | `array[string]` | No | `["KDJ","MACD","RSI","BOLL","SMA"]` | Technical indicators for hist_data |
+| `hist_day_n` | `int` | No | 120 | Number of daily K-line bars to return |
+| `hist_month_n` | `int` | No | 36 | Number of monthly K-line bars to return |
+| `hist_year_n` | `int` | No | 10 | Number of yearly K-line bars to return |
 
 ### Features
 
@@ -54,9 +61,11 @@ Requires Python 3.10+ and a working `akshare` installation (auto-installed as de
 | `fund_flow` | Daily fund flow (main force / super-large / large / medium / small orders) | East Money push API |
 | `concept` | Concept board tags belonging to the stock | East Money push2delay |
 | `hsgt_summary` | North-bound / South-bound capital flow summary | East Money |
-| `hist_data` | Daily K-line with optional technical indicators | akshare (腾讯) |
+| `hist_data` | K-line data with optional technical indicators. Supports `1min`/`day`/`month`/`year` intervals | akshare (腾讯) |
 | `realtime` | Real-time snap quote | 腾讯 |
 | `time_info` | Current system time + last trading day | Sina + local |
+| `restricted_release` | Restricted share unlock schedule (date, volume, ratio) | East Money |
+| `additional_issuance` | Additional issuance / private placement history | East Money |
 
 ### Typical Usage
 
@@ -66,10 +75,34 @@ Requires Python 3.10+ and a working `akshare` installation (auto-installed as de
     get_data(symbol="600733", features=["news", "inner_trade", "financial", "fund_flow", "concept", "hsgt_summary"], news_recent_n=10, recent_n=3)
 ```
 
-**技术分析：**
+**日K技术分析（默认120条，约6个月）：**
 
 ```markdown
-    get_data(symbol="600733", features=["hist_data"], hist_indicators=["KDJ","MACD","RSI","BOLL","SMA"])
+    get_data(symbol="600733", features=["hist_data", "realtime"], hist_interval="day", hist_day_n=120, hist_indicators=["KDJ","MACD","RSI","BOLL","SMA"])
+```
+
+**月K长线趋势（默认36个月=3年）：**
+
+```markdown
+    get_data(symbol="600733", features=["hist_data", "realtime"], hist_interval="month", hist_month_n=36, hist_indicators=["KDJ","MACD","RSI","BOLL","SMA"])
+```
+
+**年K超长线（默认10年）：**
+
+```markdown
+    get_data(symbol="600733", features=["hist_data", "realtime"], hist_interval="year", hist_year_n=10, hist_indicators=["KDJ","MACD","RSI","BOLL","SMA"])
+```
+
+**1分钟K盘中超短线（仅交易时段有数据，全天最多480条）：**
+
+```markdown
+    get_data(symbol="600733", features=["hist_data", "realtime"], hist_interval="1min", hist_indicators=["KDJ","MACD","RSI","BOLL","SMA"])
+```
+
+**限售解禁+增发数据（计算解禁成本）：**
+
+```markdown
+    get_data(symbol="600733", features=["restricted_release", "additional_issuance"])
 ```
 
 ### Response Format
