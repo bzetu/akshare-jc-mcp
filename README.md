@@ -2,7 +2,16 @@
 
 Unified MCP server for Chinese stock (A-share) market data.
 
-Replaces the multi-tool approach (like `akshare-one-mcp`) with a **single `get_data` tool** that accepts a list of requested features and returns all results in one response. This dramatically reduces LLM tool calls — from 4-7 per request down to 1.
+## Why akshare-jc-mcp?
+
+| 痛点 | 本项目的解决方式 |
+|------|----------------|
+| 多个工具各自独立，LLM要调4-7次才能凑齐数据 | **单个`get_data`工具**，一次请求所有 features 并发拉取，一次返回 |
+| akshare 某些接口不稳定（东方财富断连、概念板块查不到） | 直连 push2delay API + fallback 机制，不依赖 akshare 不稳定接口 |
+| 新闻只有摘要片段，没有正文 | 自动抓取全文，返回完整文章内容 |
+| 技术指标要自己算，代码容易写错 | 服务端预计算 **KDJ/MACD/RSI/BOLL/SMA**，默认即带回 |
+| 月K/年K数据量过大（336条→150KB）导致 MCP 传输截断 | 按 interval 独立截断：日K默认120条、月K 36条、年K 10条，payload 可控 |
+| 限售解禁和增发数据分散，解禁成本靠猜 | 自动匹配增发数据，按锁定期计算**参考增发价** |
 
 ## Install
 
