@@ -461,7 +461,17 @@ def get_data(
     }
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(features)) as pool:
         futures = {pool.submit(_call_feature, f, symbol, kwargs): f for f in features}
-        results = [f.result() for f in concurrent.futures.as_completed(futures)]
+        done, _ = concurrent.futures.wait(futures, timeout=60)
+        for f in futures:
+            if f not in done:
+                f.cancel()
+        results = []
+        for f in concurrent.futures.as_completed(list(done)):
+            try:
+                results.append(f.result(timeout=5))
+            except Exception as e:
+                feature_name = futures.get(f, "unknown")
+                results.append({"feature": feature_name, "data": None, "error": True, "error_reason": f"Timeout: {e}"})
     payload = json.dumps(results, ensure_ascii=False)
     for r in results:
         data_len = len(json.dumps(r.get("data", ""), ensure_ascii=False)) if r.get("data") else 0
